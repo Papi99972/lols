@@ -10,9 +10,26 @@ app.use(cors());
 app.use(express.json());
 
 const logFile = path.join(__dirname, "ip_logs.json");
+const htmlFile = path.join(__dirname, "logged_ips.html");
 
 // Function to get client's IP
 const getClientIp = (req) => req.headers["x-forwarded-for"] || req.connection.remoteAddress;
+
+// Function to update HTML file
+const updateHtmlFile = () => {
+    let html = "<h1>Logged IPs</h1><ul>";
+    if (fs.existsSync(logFile)) {
+        const logs = JSON.parse(fs.readFileSync(logFile));
+        let uniqueIps = new Set(logs.map(log => log.ip));
+        uniqueIps.forEach(ip => {
+            html += `<li>${ip}</li>`;
+        });
+    } else {
+        html += "<li>No IPs logged yet.</li>";
+    }
+    html += "</ul>";
+    fs.writeFileSync(htmlFile, html);
+};
 
 // Endpoint to log IP
 app.post("/log-ip", (req, res) => {
@@ -29,25 +46,20 @@ app.post("/log-ip", (req, res) => {
     logs.push(logEntry);
     fs.writeFileSync(logFile, JSON.stringify(logs, null, 2));
     console.log("Logged IP:", logEntry);
-
+    
+    updateHtmlFile();
     res.json({ message: "IP logged successfully." });
 });
 
-// Serve logged IPs at root
+// Serve the HTML page
 app.get("/", (req, res) => {
-    if (!fs.existsSync(logFile)) {
-        return res.send("No IPs logged yet.");
+    if (!fs.existsSync(htmlFile)) {
+        updateHtmlFile();
     }
-    
-    const logs = JSON.parse(fs.readFileSync(logFile));
-    let uniqueIps = new Set(logs.map(log => log.ip));
-    let html = "<h1>Logged IPs</h1><ul>";
-    uniqueIps.forEach(ip => {
-        html += `<li>${ip}</li>`;
-    });
-    html += "</ul>";
-    
-    res.send(html);
+    res.sendFile(htmlFile);
 });
 
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    updateHtmlFile();
+});
