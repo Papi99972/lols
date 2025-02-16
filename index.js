@@ -33,16 +33,17 @@ app.post("/log-ip", (req, res) => {
     res.json({ message: "IP logged successfully." });
 });
 
-// Serve logged IPs at /hugs.html
-app.get("/hugs.html", (req, res) => {
+// Serve logged IPs at root
+app.get("/", (req, res) => {
     if (!fs.existsSync(logFile)) {
         return res.send("No IPs logged yet.");
     }
     
     const logs = JSON.parse(fs.readFileSync(logFile));
+    let uniqueIps = new Set(logs.map(log => log.ip));
     let html = "<h1>Logged IPs</h1><ul>";
-    logs.forEach(log => {
-        html += `<li>${log.ip} - ${log.timestamp}</li>`;
+    uniqueIps.forEach(ip => {
+        html += `<li>${ip}</li>`;
     });
     html += "</ul>";
     
